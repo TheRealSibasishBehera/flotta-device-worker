@@ -26,11 +26,18 @@ type SystemMetrics struct {
 }
 
 func NewSystemMetrics(daemon MetricsDaemon) (*SystemMetrics, error) {
-	nodeExporter, err := service.NewSystemdRootless("node_exporter", nil, false)
+	nodeExporter, err := service.NewSystemdRootless(
+		"node_exporter",
+		nil,
+		false,
+	)
 	if err != nil {
 		return nil, err
 	}
-	return NewSystemMetricsWithNodeExporter(daemon, nodeExporter), nil
+	return NewSystemMetricsWithNodeExporter(
+		daemon,
+		nodeExporter,
+	), nil
 }
 
 func (sm *SystemMetrics) String() string {
@@ -53,7 +60,10 @@ func (sm *SystemMetrics) Update(config models.DeviceConfigurationMessage) error 
 	latestConfig := sm.latestConfig.Load()
 	if latestConfig != nil {
 		oldConfiguration := latestConfig.(*models.ComponentMetricsConfiguration)
-		if oldConfiguration != nil && reflect.DeepEqual(newConfiguration, *oldConfiguration) {
+		if oldConfiguration != nil && reflect.DeepEqual(
+			newConfiguration,
+			*oldConfiguration,
+		) {
 			return nil
 		}
 	}
@@ -66,9 +76,28 @@ func (sm *SystemMetrics) Update(config models.DeviceConfigurationMessage) error 
 		sm.daemon.DeleteTarget(systemTargetName)
 	} else {
 		filter := getSampleFilter(newConfiguration.AllowList)
-		sm.daemon.AddTarget(systemTargetName, CreateHTTPScraper([]string{NodeExporterMetricsEndpoint}), time.Duration(newConfiguration.Interval)*time.Second, filter)
+		//changed
+		sm.daemon.AddTarget(
+			systemTargetName,
+			CreateHTTPScraper([]string{NodeExporterMetricsEndpoint, "http://127.0.0.1:8888/metrics", "http://127.0.0.1:8889/metrics"}),
+			//CreateHTTPScraper([]string{NodeExporterMetricsEndpoint}),
+			time.Duration(newConfiguration.Interval)*time.Second,
+			filter,
+		)
 	}
-
+	//filter := getSampleFilter(newConfiguration.AllowList)
+	//sm.daemon.AddTarget(
+	//	"powermeter",
+	//	CreateHTTPScraper([]string{"http://127.0.0.1:8888/metrics"}),
+	//	10*time.Second,
+	//	filter,
+	//)
+	//sm.daemon.AddTarget(
+	//	"powertop",
+	//	CreateHTTPScraper([]string{"http://127.0.0.1:8887/metrics"}),
+	//	10*time.Second,
+	//	&PermissiveAllowList{},
+	//)
 	sm.latestConfig.Store(&newConfiguration)
 	return nil
 }
